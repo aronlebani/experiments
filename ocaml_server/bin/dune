@@ -1,0 +1,9 @@
+(executable
+ (public_name ocaml_server)
+ (name main)
+ (libraries ocaml_server dream))
+
+(rule
+ (targets template.ml)
+ (deps template.eml.html)
+ (action (run dream_eml %{deps} --workspace %{workspace_root})))
