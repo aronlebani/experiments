@@ -17,8 +17,28 @@ struct Header<'a> {
     value: &'a str,
 }
 
+enum Method {
+    HEAD,
+    GET,
+    POST,
+    PUT,
+    DELETE,
+}
+
+impl Method {
+    fn from_str(from: &str) -> Self {
+        match from {
+            "HEAD" => Method::HEAD,
+            "GET" => Method::GET,
+            "POST" => Method::POST,
+            "PUT" => Method::PUT,
+            "DELETE" => Method::DELETE,
+        }
+    }
+}
+
 struct Request<'a> {
-    method: &'a str,
+    method: Method,
     path: &'a str,
     version: &'a str,
     headers: Vec<Header<'a>>,
@@ -34,6 +54,16 @@ fn parse_header(line: &str) -> Header {
         key,
         value,
     }
+}
+
+fn parse_start_line(line: &str) -> (Method, &str, &str) {
+    let mut parts = line.split(" ");
+
+    let method = parts.next();
+    let path = parts.next();
+    let protocol = parts.next();
+
+    (Method::from_str(method), path, protocol)
 }
 
 fn parse(buffer: &[u8; 1024]) -> &str {
@@ -52,6 +82,12 @@ fn parse(buffer: &[u8; 1024]) -> &str {
         .clone()
         .skip_while(|x| x.to_owned() != "")
         .collect();
+
+    (method, path, version) = parse_start_line(start_line);
+
+    Request {
+        method, 
+    }
 
     println!("---start-{:?}", start_line);
     println!("---headers-{:?}", headers);
