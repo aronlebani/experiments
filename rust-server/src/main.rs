@@ -21,24 +21,29 @@ fn log_response(response: &Response) {
 async fn handler(req: Request) -> Response {
     match req.path.as_str() {
         "/" => match req.method {
-            Method::GET => Response::new()
-                .status(200)
-                .html(fs::read_to_string("public/hello.html").await.unwrap()),
-            _ => Response::new()
-                .status(405)
-                .html(fs::read_to_string("public/hello.html").await.unwrap()),
+            Method::GET => {
+                let html = fs::read_to_string("public/hello.html").await.unwrap();
+                Response::new().status(200).html(html)
+            },
+            _ => {
+                let html = fs::read_to_string("public/hello.html").await.unwrap();
+                Response::new().status(405).html(html)
+            },
         },
         "/bye" => match req.method {
-            Method::GET => Response::new()
-                .status(200)
-                .html(fs::read_to_string("public/bye.html").await.unwrap()),
-            _ => Response::new()
-                .status(405)
-                .html(fs::read_to_string("public/hello.html").await.unwrap()),
+            Method::GET => {
+                let html = fs::read_to_string("public/bye.html").await.unwrap();
+                Response::new().status(200).html(html)
+            },
+            _ => {
+                let html = fs::read_to_string("public/hello.html").await.unwrap();
+                Response::new().status(405).html(html)
+            },
         },
-        _ => Response::new()
-            .status(404)
-            .html(fs::read_to_string("public/404.html").await.unwrap()),
+        _ => {
+            let html = fs::read_to_string("public/404.html").await.unwrap();
+            Response::new().status(404).html(html)
+        },
     }
 }
 
