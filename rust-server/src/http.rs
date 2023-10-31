@@ -1,6 +1,6 @@
 use std::str;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Header {
     key: String,
     value: String,
@@ -175,11 +175,8 @@ pub struct Response {
     version: String,
     status: Status,
     headers: Vec<Header>,
-    content_type: String,
     content: String,
 }
-
-// TODO - remove content_type field and write a header instead
 
 impl Response {
     pub fn new() -> Self {
@@ -188,7 +185,6 @@ impl Response {
             version: "1.1".to_string(),
             status: Status::new(200).unwrap(),
             headers: Vec::new(),
-            content_type: String::new(),
             content: String::new(),
         }
     }
@@ -200,10 +196,25 @@ impl Response {
         }
     }
 
+    pub fn headers(self, headers: Vec<Header>) -> Self {
+        Response {
+            headers: self
+                .headers
+                .iter()
+                .cloned()
+                .chain(headers.iter().cloned())
+                .collect(),
+            ..self
+        }
+    }
+
     pub fn html(self, content: String) -> Self {
         Response {
             content,
-            content_type: "text/html".to_string(),
+            headers: vec![Header {
+                key: "Content-Type".to_string(),
+                value: "text/html".to_string(),
+            }],
             ..self
         }
     }
@@ -211,7 +222,10 @@ impl Response {
     pub fn json(self, content: String) -> Self {
         Response {
             content,
-            content_type: "application/json".to_string(),
+            headers: vec![Header {
+                key: "Content-Type".to_string(),
+                value: "application/json".to_string(),
+            }],
             ..self
         }
     }
@@ -221,6 +235,7 @@ impl Response {
         let length_str = length.to_string();
         let c_l_header = Header::new("Content-Length", &length_str);
         let c_t_header = Header::new("Content-type", &self.content_type);
+        // TODO - generalise headers
 
         format!(
             "{}/{} {} {}\r\n{}\r\n{}\r\n\r\n{}",
