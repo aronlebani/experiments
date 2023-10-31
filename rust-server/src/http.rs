@@ -1,14 +1,16 @@
+use std::str;
+
 #[derive(Debug)]
-struct Header<'a> {
-    key: &'a str,
-    value: &'a str,
+pub struct Header {
+    key: String,
+    value: String,
 }
 
-impl<'a> Header<'a> {
-    fn new(key: &'a str, value: &'a str) -> Self {
+impl Header {
+    fn new(key: &str, value: &str) -> Self {
         Header {
-            key,
-            value,
+            key: key.to_string(),
+            value: value.to_string(),
         }
     }
 
@@ -18,7 +20,7 @@ impl<'a> Header<'a> {
 }
 
 #[derive(Debug)]
-enum Method {
+pub enum Method {
     HEAD,
     GET,
     POST,
@@ -40,7 +42,7 @@ impl Method {
 }
 
 #[derive(Debug)]
-enum Status {
+pub enum Status {
     Ok,
     SeeOther,
     NotFound,
@@ -96,17 +98,17 @@ impl Status {
 }
 
 #[derive(Debug)]
-struct Request<'a> {
-    method: Method,
-    path: &'a str,
-    scheme: &'a str,
-    version: &'a str,
-    headers: Vec<Header<'a>>,
-    body: String,
+pub struct Request {
+    pub method: Method,
+    pub path: String,
+    pub scheme: String,
+    pub version: String,
+    pub headers: Vec<Header>,
+    pub body: String,
 }
 
-impl<'a> Request<'a> {
-    fn from_buffer(from: &'a [u8; 1024]) -> Self {
+impl Request {
+    pub fn from_buffer(from: &[u8; 1024]) -> Self {
         Self::parse(from)
     }
 
@@ -131,9 +133,9 @@ impl<'a> Request<'a> {
 
         Request {
             method, 
-            path,
-            scheme,
-            version,
+            path: path.to_string(),
+            scheme: scheme.to_string(),
+            version: version.to_string(),
             headers,
             body,
         }
@@ -145,8 +147,8 @@ impl<'a> Request<'a> {
         let value = parts.next().unwrap();
 
         Header {
-            key,
-            value,
+            key: key.to_string(),
+            value: value.to_string(),
         }
     }
 
@@ -172,55 +174,56 @@ impl<'a> Request<'a> {
     }
 }
 
-struct Response<'a> {
-    scheme: &'a str,
-    version: &'a str,
+#[derive(Debug)]
+pub struct Response {
+    scheme: String,
+    version: String,
     status: Status,
-    headers: Vec<Header<'a>>,
-    content_type: &'a str,
+    headers: Vec<Header>,
+    content_type: String,
     content: String,
 }
 
-impl<'a> Response<'a> {
-    fn new() -> Self {
+impl Response {
+    pub fn new() -> Self {
         Response {
-            scheme: "HTTP",
-            version: "1.1",
+            scheme: "HTTP".to_string(),
+            version: "1.1".to_string(),
             status: Status::new(200).unwrap(),
             headers: Vec::new(),
-            content_type: "",
+            content_type: String::new(),
             content: String::new(),
         }
     }
 
-    fn status(self, status: u16) -> Self {
+    pub fn status(self, status: u16) -> Self {
         Response {
             status: Status::new(status).unwrap(),
             ..self
         }
     }
 
-    fn html(self, content: String) -> Self {
+    pub fn html(self, content: String) -> Self {
         Response {
             content,
-            content_type: "text/html",
+            content_type: "text/html".to_string(),
             ..self
         }
     }
 
-    fn json(self, content: String) -> Self {
+    pub fn json(self, content: String) -> Self {
         Response {
             content,
-            content_type: "application/json",
+            content_type: "application/json".to_string(),
             ..self
         }
     }
 
-    fn to_str(self) -> String {
+    pub fn to_str(self) -> String {
         let length = self.content.len();
         let length_str = length.to_string();
         let c_l_header = Header::new("Content-Length", &length_str);
-        let c_t_header = Header::new("Content-type", self.content_type);
+        let c_t_header = Header::new("Content-type", &self.content_type);
 
         format!(
             "{}/{} {} {}\r\n{}\r\n{}\r\n\r\n{}",
