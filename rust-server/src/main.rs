@@ -1,5 +1,3 @@
-use std::str;
-
 use async_std::fs;
 use async_std::io::{ReadExt, WriteExt};
 use async_std::net::{TcpListener, TcpStream};

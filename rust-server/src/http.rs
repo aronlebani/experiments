@@ -68,31 +68,29 @@ impl Status {
         }
     }
 
-    fn code(&self) -> Result<u16, &str> {
+    fn code(&self) -> u16 {
         match self {
-            Status::Ok => Ok(200),
-            Status::SeeOther => Ok(303),
-            Status::BadRequest => Ok(400),
-            Status::Unauthorized => Ok(401),
-            Status::Forbidden => Ok(403),
-            Status::NotFound => Ok(404),
-            Status::NotAllowed => Ok(405),
-            Status::InternalServerError => Ok(500),
-            _ => Err("Invalid code"),
+            Status::Ok => 200,
+            Status::SeeOther => 303,
+            Status::BadRequest => 400,
+            Status::Unauthorized => 401,
+            Status::Forbidden => 403,
+            Status::NotFound => 404,
+            Status::NotAllowed => 405,
+            Status::InternalServerError => 500,
         }
     }
 
-    fn message(&self) -> Result<&str, &str> {
+    fn message(&self) -> &str {
         match self {
-            Status::Ok => Ok("OK"),
-            Status::SeeOther => Ok("SEE OTHER"),
-            Status::BadRequest => Ok("BAD REQUEST"),
-            Status::Unauthorized => Ok("UNAUTHORIZED"),
-            Status::Forbidden => Ok("FORBIDDEN"),
-            Status::NotFound => Ok("NOT FOUND"),
-            Status::NotAllowed => Ok("NOT ALLOWED"),
-            Status::InternalServerError => Ok("INTERNAL SERVER ERROR"),
-            _ => Err("Invalid code"),
+            Status::Ok => "OK",
+            Status::SeeOther => "SEE OTHER",
+            Status::BadRequest => "BAD REQUEST",
+            Status::Unauthorized => "UNAUTHORIZED",
+            Status::Forbidden => "FORBIDDEN",
+            Status::NotFound => "NOT FOUND",
+            Status::NotAllowed => "NOT ALLOWED",
+            Status::InternalServerError => "INTERNAL SERVER ERROR",
         }
     }
 }
@@ -181,6 +179,8 @@ pub struct Response {
     content: String,
 }
 
+// TODO - remove content_type field and write a header instead
+
 impl Response {
     pub fn new() -> Self {
         Response {
@@ -226,8 +226,8 @@ impl Response {
             "{}/{} {} {}\r\n{}\r\n{}\r\n\r\n{}",
             self.scheme,
             self.version,
-            self.status.code().unwrap(),
-            self.status.message().unwrap(),
+            self.status.code(),
+            self.status.message(),
             c_l_header.to_str(),
             c_t_header.to_str(),
             self.content
