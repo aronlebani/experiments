@@ -9,15 +9,6 @@ mod http;
 
 use crate::http::{Method, Request, Response};
 
-fn log_request(buffer: &[u8; 1024]) {
-    let result = str::from_utf8(buffer).unwrap();
-    print!("{}\n", result);
-}
-
-fn log_response(response: &Response) {
-    print!("{:?}\n", response);
-}
-
 async fn handler(req: Request) -> Response {
     match req.path.as_str() {
         "/" => match req.method {
@@ -49,15 +40,11 @@ async fn handler(req: Request) -> Response {
 
 async fn handle_connection(mut connection: TcpStream) {
     let mut buffer = [0; 1024];
+
     connection.read(&mut buffer).await.unwrap();
 
-    log_request(&buffer);
-
     let req = Request::from_buffer(&buffer);
-
     let res = handler(req).await;
-
-    log_response(&res);
 
     connection.write(res.to_str().as_bytes()).await.unwrap();
     connection.flush().await.unwrap();
