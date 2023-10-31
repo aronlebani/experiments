@@ -1,13 +1,13 @@
 use std::str;
 
 use async_std::fs;
-use async_std::task;
-use async_std::net::{TcpListener, TcpStream};
 use async_std::io::{ReadExt, WriteExt};
+use async_std::net::{TcpListener, TcpStream};
+use async_std::task;
 
 mod http;
 
-use crate::http::{Request, Response, Method};
+use crate::http::{Method, Request, Response};
 
 fn log_request(buffer: &[u8; 1024]) {
     let result = str::from_utf8(buffer).unwrap();
@@ -24,26 +24,26 @@ async fn handler(req: Request) -> Response {
             Method::GET => {
                 let html = fs::read_to_string("public/hello.html").await.unwrap();
                 Response::new().status(200).html(html)
-            },
+            }
             _ => {
                 let html = fs::read_to_string("public/hello.html").await.unwrap();
                 Response::new().status(405).html(html)
-            },
+            }
         },
         "/bye" => match req.method {
             Method::GET => {
                 let html = fs::read_to_string("public/bye.html").await.unwrap();
                 Response::new().status(200).html(html)
-            },
+            }
             _ => {
                 let html = fs::read_to_string("public/hello.html").await.unwrap();
                 Response::new().status(405).html(html)
-            },
+            }
         },
         _ => {
             let html = fs::read_to_string("public/404.html").await.unwrap();
             Response::new().status(404).html(html)
-        },
+        }
     }
 }
 
@@ -72,5 +72,5 @@ async fn main() {
         task::spawn(async move {
             handle_connection(connection).await;
         });
-    };
+    }
 }

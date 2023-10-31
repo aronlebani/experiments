@@ -126,13 +126,10 @@ impl Request {
             .map(|x| Self::parse_header(x))
             .collect();
 
-        let body: String = parts
-            .clone()
-            .skip_while(|x| x.to_owned() != "")
-            .collect();
+        let body: String = parts.clone().skip_while(|x| x.to_owned() != "").collect();
 
         Request {
-            method, 
+            method,
             path: path.to_string(),
             scheme: scheme.to_string(),
             version: version.to_string(),
