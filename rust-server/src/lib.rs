@@ -1,5 +1,9 @@
 use std::str;
 
+// TODO
+// - Docs
+// - Error struct
+
 #[derive(Debug, Clone)]
 pub struct Header {
     key: String,
@@ -13,8 +17,10 @@ impl Header {
             value: value.to_string(),
         }
     }
+}
 
-    fn to_str(&self) -> String {
+impl ToString for Header {
+    fn to_string(&self) -> String {
         format!("{}: {}", self.key, self.value)
     }
 }
@@ -29,14 +35,14 @@ pub enum Method {
 }
 
 impl Method {
-    fn new(from: &str) -> Result<Self, &str> {
+    fn new(from: &str) -> Result<Self, String> {
         match from {
             "HEAD" => Ok(Method::HEAD),
             "GET" => Ok(Method::GET),
             "POST" => Ok(Method::POST),
             "PUT" => Ok(Method::PUT),
             "DELETE" => Ok(Method::DELETE),
-            _ => Err("Invalid http method"),
+            _ => Err("Invalid or unsupported http method".to_string()),
         }
     }
 }
@@ -54,7 +60,7 @@ pub enum Status {
 }
 
 impl Status {
-    fn new<'a>(code: u16) -> Result<Self, &'a str> {
+    fn from_code(code: u16) -> Result<Self, String> {
         match code {
             200 => Ok(Self::Ok),
             303 => Ok(Self::SeeOther),
@@ -64,7 +70,7 @@ impl Status {
             404 => Ok(Self::NotFound),
             405 => Ok(Self::NotAllowed),
             500 => Ok(Self::InternalServerError),
-            _ => Err("Invalid code"),
+            _ => Err("Invalid code".to_string()),
         }
     }
 
@@ -95,6 +101,12 @@ impl Status {
     }
 }
 
+impl ToString for Status {
+    fn to_string(&self) -> String {
+        format!("{} {}", self.code(), self.message())
+    }
+}
+
 #[derive(Debug)]
 pub struct Request {
     pub method: Method,
@@ -106,8 +118,8 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn from_buffer(from: &[u8; 1024]) -> Self {
-        Self::parse(from)
+    pub fn from_buffer(buffer: &[u8; 1024]) -> Self {
+        Self::parse(buffer)
     }
 
     fn parse(buffer: &[u8; 1024]) -> Request {
@@ -141,10 +153,7 @@ impl Request {
         let key = parts.next().unwrap();
         let value = parts.next().unwrap();
 
-        Header {
-            key: key.to_string(),
-            value: value.to_string(),
-        }
+        Header::new(key, value)
     }
 
     fn parse_protocol(line: &str) -> (&str, &str) {
@@ -179,72 +188,72 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn new() -> Self {
+    pub fn empty() -> Self {
         Response {
             scheme: "HTTP".to_string(),
             version: "1.1".to_string(),
-            status: Status::new(200).unwrap(),
+            status: Status::Ok,
             headers: Vec::new(),
             content: String::new(),
         }
     }
 
+    pub fn html(content: String) -> Self {
+        let content_length = content.len();
+
+        Response {
+            scheme: "HTTP".to_string(),
+            version: "1.1".to_string(),
+            status: Status::Ok,
+            headers: Vec::new(),
+            content,
+        }
+        .header(Header::new("Content-Type", "text/html"))
+        .header(Header::new("Content-Length", &content_length.to_string()))
+    }
+
+    pub fn json(content: String) -> Self {
+        let content_length = content.len();
+
+        Response {
+            scheme: "HTTP".to_string(),
+            version: "1.1".to_string(),
+            status: Status::Ok,
+            headers: Vec::new(),
+            content,
+        }
+        .header(Header::new("Content-Type", "application/json"))
+        .header(Header::new("Content-Length", &content_length.to_string()))
+    }
+
     pub fn status(self, status: u16) -> Self {
         Response {
-            status: Status::new(status).unwrap(),
+            status: Status::from_code(status).unwrap(),
             ..self
         }
     }
 
-    pub fn headers(self, headers: Vec<Header>) -> Self {
-        Response {
-            headers: self
-                .headers
-                .iter()
-                .cloned()
-                .chain(headers.iter().cloned())
-                .collect(),
-            ..self
-        }
-    }
+    pub fn header(self, header: Header) -> Self {
+        let mut headers = self.headers;
+        headers.push(header);
 
-    pub fn html(self, content: String) -> Self {
-        Response {
-            content,
-            headers: vec![Header {
-                key: "Content-Type".to_string(),
-                value: "text/html".to_string(),
-            }],
-            ..self
-        }
+        Response { headers, ..self }
     }
+}
 
-    pub fn json(self, content: String) -> Self {
-        Response {
-            content,
-            headers: vec![Header {
-                key: "Content-Type".to_string(),
-                value: "application/json".to_string(),
-            }],
-            ..self
-        }
-    }
-
-    pub fn to_str(self) -> String {
-        let length = self.content.len();
-        let length_str = length.to_string();
-        let c_l_header = Header::new("Content-Length", &length_str);
-        let c_t_header = Header::new("Content-type", &self.content_type);
-        // TODO - generalise headers
+impl ToString for Response {
+    fn to_string(&self) -> String {
+        let headers = self
+            .headers
+            .iter()
+            .fold(String::new(), |a, b| a + &b.to_string() + "\r\n");
 
         format!(
-            "{}/{} {} {}\r\n{}\r\n{}\r\n\r\n{}",
+            "{}/{} {}\r\n{}\r\n{}",
             self.scheme,
             self.version,
-            self.status.code(),
-            self.status.message(),
-            c_l_header.to_str(),
-            c_t_header.to_str(),
+            self.status.to_string(),
+            headers,
             self.content
         )
     }
