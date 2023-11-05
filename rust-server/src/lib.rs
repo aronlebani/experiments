@@ -1,8 +1,17 @@
 use std::str;
 
-// TODO
-// - Docs
-// - Error struct
+#[derive(Debug)]
+pub enum ErrorType {
+    ParserError,
+    InvalidMethod,
+    InvalidCode,
+}
+
+#[derive(Debug)]
+pub struct Error {
+    pub err_type: ErrorType,
+    pub msg: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct Header {
@@ -35,14 +44,19 @@ pub enum Method {
 }
 
 impl Method {
-    fn new(from: &str) -> Result<Self, String> {
+    fn new(from: &str) -> Result<Self, Error> {
+        let method_err = Error {
+            err_type: ErrorType::InvalidMethod,
+            msg: "Invalid or unsupported http method".to_string(),
+        };
+
         match from {
             "HEAD" => Ok(Method::HEAD),
             "GET" => Ok(Method::GET),
             "POST" => Ok(Method::POST),
             "PUT" => Ok(Method::PUT),
             "DELETE" => Ok(Method::DELETE),
-            _ => Err("Invalid or unsupported http method".to_string()),
+            _ => Err(method_err),
         }
     }
 }
@@ -60,20 +74,6 @@ pub enum Status {
 }
 
 impl Status {
-    fn from_code(code: u16) -> Result<Self, String> {
-        match code {
-            200 => Ok(Self::Ok),
-            303 => Ok(Self::SeeOther),
-            400 => Ok(Self::BadRequest),
-            401 => Ok(Self::Unauthorized),
-            403 => Ok(Self::Forbidden),
-            404 => Ok(Self::NotFound),
-            405 => Ok(Self::NotAllowed),
-            500 => Ok(Self::InternalServerError),
-            _ => Err("Invalid code".to_string()),
-        }
-    }
-
     fn code(&self) -> u16 {
         match self {
             Status::Ok => 200,
@@ -118,62 +118,111 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn from_string(buffer: &str) -> Self {
+    pub fn from_string(buffer: &str) -> Result<Self, Error> {
         Self::parse(buffer)
     }
 
-    fn parse(buffer: &str) -> Request {
+    fn parse(buffer: &str) -> Result<Request, Error> {
+        let parser_err = Error {
+            err_type: ErrorType::ParserError,
+            msg: "Invalid request format".to_string(),
+        };
+
         let mut parts = buffer.split("\r\n");
 
-        let start_line = parts.next().unwrap();
+        let start_line = match parts.next() {
+            Some(start_line) => start_line,
+            None => return Err(parser_err),
+        };
 
-        let (method, path, scheme, version) = Self::parse_start_line(start_line);
+        let (method, path, scheme, version) = Self::parse_start_line(start_line)?;
 
         let headers: Vec<Header> = parts
             .clone()
             .take_while(|x| x.to_owned() != "")
-            .map(|x| Self::parse_header(x))
+            .flat_map(|x| Self::parse_header(x))
             .collect();
 
         let body: String = parts.clone().skip_while(|x| x.to_owned() != "").collect();
 
-        Request {
+        Ok(Request {
             method,
             path: path.to_string(),
             scheme: scheme.to_string(),
             version: version.to_string(),
             headers,
             body,
-        }
+        })
     }
 
-    fn parse_header(line: &str) -> Header {
+    fn parse_header(line: &str) -> Result<Header, Error> {
+        let parser_err = Error {
+            err_type: ErrorType::ParserError,
+            msg: "Invalid header format".to_string(),
+        };
+
         let mut parts = line.split(": ");
-        let key = parts.next().unwrap();
-        let value = parts.next().unwrap();
 
-        Header::new(key, value)
+        let key = match parts.next() {
+            Some(key) => key,
+            None => return Err(parser_err),
+        };
+
+        let value = match parts.next() {
+            Some(value) => value,
+            None => return Err(parser_err),
+        };
+
+        Ok(Header::new(key, value))
     }
 
-    fn parse_protocol(line: &str) -> (&str, &str) {
+    fn parse_protocol(line: &str) -> Result<(&str, &str), Error> {
+        let parser_err = Error {
+            err_type: ErrorType::ParserError,
+            msg: "Invalid protocol format".to_string(),
+        };
+
         let mut parts = line.split("/");
 
-        let scheme = parts.next().unwrap();
-        let version = parts.next().unwrap();
+        let scheme = match parts.next() {
+            Some(scheme) => scheme,
+            None => return Err(parser_err),
+        };
 
-        (scheme, version)
+        let version = match parts.next() {
+            Some(version) => version,
+            None => return Err(parser_err),
+        };
+
+        Ok((scheme, version))
     }
 
-    fn parse_start_line(line: &str) -> (Method, &str, &str, &str) {
+    fn parse_start_line(line: &str) -> Result<(Method, &str, &str, &str), Error> {
+        let parser_err = Error {
+            err_type: ErrorType::ParserError,
+            msg: "Invalid start line format".to_string(),
+        };
+
         let mut parts = line.split(" ");
 
-        let method = parts.next().unwrap();
-        let path = parts.next().unwrap();
-        let protocol = parts.next().unwrap();
+        let method = match parts.next() {
+            Some(method) => Method::new(method)?,
+            None => return Err(parser_err),
+        };
 
-        let (scheme, version) = Self::parse_protocol(protocol);
+        let path = match parts.next() {
+            Some(path) => path,
+            None => return Err(parser_err),
+        };
 
-        (Method::new(method).unwrap(), path, scheme, version)
+        let protocol = match parts.next() {
+            Some(protocol) => protocol,
+            None => return Err(parser_err),
+        };
+
+        let (scheme, version) = Self::parse_protocol(protocol)?;
+
+        Ok((method, path, scheme, version))
     }
 }
 
@@ -225,9 +274,9 @@ impl Response {
         .header(Header::new("Content-Length", &content_length.to_string()))
     }
 
-    pub fn status(self, status: u16) -> Self {
+    pub fn status(self, status: Status) -> Self {
         Response {
-            status: Status::from_code(status).unwrap(),
+            status,
             ..self
         }
     }

@@ -5,33 +5,33 @@ use async_std::io::{ReadExt, WriteExt};
 use async_std::net::{TcpListener, TcpStream};
 use async_std::task;
 
-use rust_server::{Method, Request, Response};
+use rust_server::{Method, Status, Request, Response};
 
 async fn handler(req: Request) -> Response {
     match req.path.as_str() {
         "/" => match req.method {
             Method::GET => {
                 let html = fs::read_to_string("public/hello.html").await.unwrap();
-                Response::html(html).status(200)
+                Response::html(html).status(Status::Ok)
             }
             _ => {
                 let html = fs::read_to_string("public/hello.html").await.unwrap();
-                Response::html(html).status(405)
+                Response::html(html).status(Status::NotAllowed)
             }
         },
         "/bye" => match req.method {
             Method::GET => {
                 let html = fs::read_to_string("public/bye.html").await.unwrap();
-                Response::html(html).status(200)
+                Response::html(html).status(Status::NotAllowed)
             }
             _ => {
                 let html = fs::read_to_string("public/hello.html").await.unwrap();
-                Response::html(html).status(405)
+                Response::html(html).status(Status::NotAllowed)
             }
         },
         _ => {
             let html = fs::read_to_string("public/404.html").await.unwrap();
-            Response::html(html).status(404)
+            Response::html(html).status(Status::NotFound)
         }
     }
 }
@@ -43,7 +43,7 @@ async fn handle_connection(mut connection: TcpStream) {
 
     let req_text = str::from_utf8(&buffer).unwrap().trim_end_matches("\0");
 
-    let req = Request::from_string(req_text);
+    let req = Request::from_string(req_text).unwrap();
     let res = handler(req).await.to_string();
 
     let res_bytes = res.as_bytes();
