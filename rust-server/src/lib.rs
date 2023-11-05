@@ -118,13 +118,12 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn from_buffer(buffer: &[u8; 1024]) -> Self {
+    pub fn from_string(buffer: &str) -> Self {
         Self::parse(buffer)
     }
 
-    fn parse(buffer: &[u8; 1024]) -> Request {
-        let text = str::from_utf8(buffer).unwrap().trim_end_matches("\0");
-        let mut parts = text.split("\r\n");
+    fn parse(buffer: &str) -> Request {
+        let mut parts = buffer.split("\r\n");
 
         let start_line = parts.next().unwrap();
 

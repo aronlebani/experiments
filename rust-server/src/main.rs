@@ -1,3 +1,5 @@
+use std::str;
+
 use async_std::fs;
 use async_std::io::{ReadExt, WriteExt};
 use async_std::net::{TcpListener, TcpStream};
@@ -39,10 +41,14 @@ async fn handle_connection(mut connection: TcpStream) {
 
     connection.read(&mut buffer).await.unwrap();
 
-    let req = Request::from_buffer(&buffer);
-    let res = handler(req).await;
+    let req_text = str::from_utf8(&buffer).unwrap().trim_end_matches("\0");
 
-    connection.write(res.to_string().as_bytes()).await.unwrap();
+    let req = Request::from_string(req_text);
+    let res = handler(req).await.to_string();
+
+    let res_bytes = res.as_bytes();
+
+    connection.write(res_bytes).await.unwrap();
     connection.flush().await.unwrap();
 }
 
@@ -50,7 +56,7 @@ async fn handle_connection(mut connection: TcpStream) {
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:3333").await.unwrap();
 
-    print!("\nListening on http://localhost:3333\nType Ctrl+C to stop\n");
+    print!("     > Listening on http://localhost:3333\n     > Type Ctrl+C to stop\n");
 
     loop {
         let (connection, _) = listener.accept().await.unwrap();
