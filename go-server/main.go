@@ -19,7 +19,6 @@ const (
 	pgHost        = "localhost"
 	pgPort        = "5432"
 	pgName        = "go-server"
-	appPort       = ":3333"
 )
 
 var tmpl = template.Must(template.ParseFiles("hello.html"))
@@ -53,11 +52,14 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 
 	fmt.Printf("%s: got / request\n", ctx.Value(keyServerAddr))
+
 	io.WriteString(w, "This is my website!\n")
 }
 
 func getHello(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
+
+	fmt.Printf("%s: got /hello request\n", ctx.Value(keyServerAddr))
 
 	var first = r.URL.Query().Get("first")
 	var last = r.URL.Query().Get("last")
@@ -68,8 +70,6 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("%s: got /hello request\n", ctx.Value(keyServerAddr))
-
 	var person = Person{
 		First: first,
 		Last:  last,
@@ -79,24 +79,8 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, person)
 }
 
-func main() {
-	var mux = http.NewServeMux()
-
-	mux.HandleFunc("/", getRoot)
-	mux.HandleFunc("/hello", getHello)
-
-	var ctx = context.Background()
-
-	var server = &http.Server{
-		Addr:    appPort,
-		Handler: mux,
-		BaseContext: func(l net.Listener) context.Context {
-			return context.WithValue(ctx, keyServerAddr, l.Addr().String())
-		},
-	}
-
-	fmt.Printf("Listening on http://localhost%s\n", appPort)
-	fmt.Printf("Type Ctrl+C to stop\n")
+func run(server *http.Server, cancelCtx func()) {
+	fmt.Printf("Listening on http://localhost%s\n", server.Addr)
 
 	var err = server.ListenAndServe()
 
@@ -106,4 +90,39 @@ func main() {
 		fmt.Printf("Error starting server: %s\n", err)
 		os.Exit(1)
 	}
+
+	cancelCtx()
+}
+
+func main() {
+	var muxOne = http.NewServeMux()
+	muxOne.HandleFunc("/", getRoot)
+
+	var muxTwo = http.NewServeMux()
+	muxTwo.HandleFunc("/hello", getHello)
+
+	var ctx, cancelCtx = context.WithCancel(context.Background())
+
+	var serverOne = &http.Server{
+		Addr:    ":3333",
+		Handler: muxOne,
+		BaseContext: func(l net.Listener) context.Context {
+			return context.WithValue(ctx, keyServerAddr, l.Addr().String())
+		},
+	}
+
+	var serverTwo = &http.Server{
+		Addr:    ":4444",
+		Handler: muxTwo,
+		BaseContext: func(l net.Listener) context.Context {
+			return context.WithValue(ctx, keyServerAddr, l.Addr().String())
+		},
+	}
+
+	fmt.Printf("Type Ctrl+C to stop\n")
+
+	go run(serverOne, cancelCtx)
+	go run(serverTwo, cancelCtx)
+
+	<-ctx.Done()
 }
