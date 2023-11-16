@@ -5,7 +5,7 @@ use async_std::io::{ReadExt, WriteExt};
 use async_std::net::{TcpListener, TcpStream};
 use async_std::task;
 
-use rust_server::{Method, Status, Request, Response};
+use rust_server::{Method, Request, Response, Status};
 
 async fn handler(req: Request) -> Response {
     match req.path.as_str() {
@@ -56,7 +56,7 @@ async fn handle_connection(mut connection: TcpStream) {
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:3333").await.unwrap();
 
-    print!("     > Listening on http://localhost:3333\n     > Type Ctrl+C to stop\n");
+    print!("> Listening on http://localhost:3333\n> Type Ctrl+C to stop\n");
 
     loop {
         let (connection, _) = listener.accept().await.unwrap();
