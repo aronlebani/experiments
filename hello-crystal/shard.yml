@@ -1,0 +1,17 @@
+name: hello-crystal
+version: 0.1.0
+
+authors:
+  - Aron Lebani <aron@lebani.dev>
+
+targets:
+  hello-crystal:
+    main: src/hello-crystal.cr
+
+dependencies:
+  router:
+    github: tbrand/router.cr
+
+crystal: '>= 1.10.1'
+
+license: MIT
